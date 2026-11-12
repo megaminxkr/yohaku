@@ -24,7 +24,7 @@ jobs:
           TZ=America/Los_Angeles npm test
           TZ=Asia/Tokyo npm test
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v7
         if: always()

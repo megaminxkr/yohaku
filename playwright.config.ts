@@ -14,6 +14,7 @@ export default defineConfig({
     launchOptions: { executablePath: process.env.CHROMIUM_PATH },
   },
   projects: [
+    { name: "webkit-ipad", use: { browserName: "webkit", viewport: { width: 834, height: 1112 }, hasTouch: true, launchOptions: {} } },
     {
       name: "phone",
       use: {

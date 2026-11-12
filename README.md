@@ -36,7 +36,7 @@ npm run preview
 ブラウザの自動テスト：
 
 ```sh
-npx playwright install --with-deps chromium
+npx playwright install --with-deps chromium webkit
 npm run build
 npm run test:e2e
 ```
@@ -107,3 +107,9 @@ src/style.css       レスポンシブ表示
 
 採用時の公式ドキュメント：
 [React](https://react.dev/versions)、[TypeScriptのReact対応](https://www.typescriptlang.org/docs/handbook/react.html)、[Vite](https://vite.dev/guide/)、[ViteのGitHub Pages公開](https://vite.dev/guide/static-deploy#github-pages)、[Playwright](https://playwright.dev/docs/intro)。本番依存はReactとReact DOMのみ。バージョンと依存解決はpackage-lock.jsonに固定しています。
+
+## 公開しても白い画面になる場合
+
+GitHub標準の **pages build and deployment** がリポジトリ直下を公開すると、開発用の `index.html` が `/src/main.tsx` を参照したまま配信され、アプリは起動しません。PagesのSourceを **GitHub Actions** にし、このリポジトリの **Deploy Pages** を実行してください。公開対象は `npm run build` が生成する `dist/` です。ビルド後に開発ソース参照の混入・アセットの実在・サブパスを自動確認します。
+
+CIはChromiumの3画面幅に加え、WebKitのiPad相当の画面でも主要操作を検証します。WebKitテストは実際のiOS端末でのSafari検証を代替するものではありません。
