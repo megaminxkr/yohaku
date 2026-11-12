@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import type { ReactNode } from "react";
+import { cloneElement, isValidElement, useEffect, useId, useRef } from "react";
+import type { ReactElement, ReactNode } from "react";
 export function Icon({ name, size = 20 }: { name: string; size?: number }) {
   const paths: Record<string, ReactNode> = {
     today: (
@@ -76,8 +76,13 @@ export function Modal({
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const el = ref.current;
+    const previous = document.activeElement as HTMLElement | null;
     el?.showModal();
-    return () => el?.close();
+    el?.querySelector<HTMLElement>("input, select, textarea")?.focus();
+    return () => {
+      el?.close();
+      if (previous?.isConnected) previous.focus();
+    };
   }, []);
   return (
     <dialog
@@ -112,12 +117,22 @@ export function Field({
   children: ReactNode;
   hint?: string;
 }) {
+  const id = useId();
+  const input = isValidElement(children)
+    ? cloneElement(
+        children as ReactElement<{ id?: string; "aria-describedby"?: string }>,
+        {
+          id,
+          "aria-describedby": hint ? `${id}-hint` : undefined,
+        },
+      )
+    : children;
   return (
-    <label className="field">
-      <span>{label}</span>
-      {children}
-      {hint && <small>{hint}</small>}
-    </label>
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      {input}
+      {hint && <small id={`${id}-hint`}>{hint}</small>}
+    </div>
   );
 }
 export function Empty({

@@ -308,3 +308,15 @@ test("date-only values use local calendar, including leap days", () => {
   assert.equal(localDay(new Date(2026, 0, 1, 0, 1)), "2026-01-01");
   assert.equal(weekDays(day)[0], "2026-11-09");
 });
+test("collectively impossible deadlines are warned even if each task fits", () => {
+  const d = data();
+  d.tasks = [
+    task("a", { deadline: addDays(day, 1), remaining: 150 }),
+    task("b", { deadline: addDays(day, 1), remaining: 150 }),
+  ];
+  assert.ok(
+    deadlineWarnings(d, day, now).some((w) =>
+      w.includes("すべてを締切までに終えることはできません"),
+    ),
+  );
+});

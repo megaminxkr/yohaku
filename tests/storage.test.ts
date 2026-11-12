@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { IDBFactory } from "fake-indexeddb";
+import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
 import { initialData } from "../src/model.ts";
 import {
   loadData,
@@ -136,27 +136,15 @@ test("validation failure cannot overwrite IndexedDB", async () => {
 test("transaction write errors propagate and retain prior record", async () => {
   const f = new IDBFactory();
   await saveData(initialData(), 0, f);
-  const db = await openDatabase(f);
-  const original = db.transaction.bind(db);
-  db.transaction = ((...args: Parameters<IDBDatabase["transaction"]>) => {
-    const tx = original(...args);
-    if (args[1] === "readwrite") queueMicrotask(() => tx.abort());
-    return tx;
-  }) as IDBDatabase["transaction"];
-  db.close();
-  const denying = {
-    open() {
-      const request = {} as IDBOpenDBRequest;
-      queueMicrotask(() => {
-        Object.defineProperty(request, "error", {
-          value: new DOMException("Quota exceeded", "QuotaExceededError"),
-        });
-        request.onerror?.(new Event("error"));
-      });
-      return request;
-    },
-  } as unknown as IDBFactory;
-  await assert.rejects(() => saveData(initialData(), 1, denying), /Quota/);
+  const original = IDBObjectStore.prototype.put;
+  IDBObjectStore.prototype.put = function () {
+    throw new DOMException("Quota exceeded", "QuotaExceededError");
+  };
+  try {
+    await assert.rejects(() => saveData(initialData(), 1, f), /Quota/);
+  } finally {
+    IDBObjectStore.prototype.put = original;
+  }
   assert.equal((await loadData(f)).revision, 1);
 });
 test("corrupt stored data raises an error, not a fresh empty overwrite", async () => {

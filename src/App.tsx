@@ -160,6 +160,15 @@ export default function App() {
     if (!data) return;
     const blocks = data.plans[day]?.normalBackup;
     if (!blocks) return;
+    if (
+      data.plans[day].blocks.some(
+        (b) => b.manual && !b.done && !blocks.some((old) => old.id === b.id),
+      )
+    ) {
+      notify("追加した手動の時刻を保持して、通常プランを提案し直しました。");
+      preview("normal");
+      return;
+    }
     const time = new Date();
     const valid = blocks.filter(
       (b) =>
@@ -1586,7 +1595,6 @@ export default function App() {
                 <>
                   <Field label="タイトル">
                     <input
-                      autoFocus
                       name="title"
                       placeholder="例：数学の問題を解く"
                       maxLength={200}
@@ -1696,7 +1704,6 @@ export default function App() {
                   )}
                   <Field label="予定の名称">
                     <input
-                      autoFocus
                       name="title"
                       maxLength={200}
                       defaultValue={
@@ -1770,7 +1777,6 @@ export default function App() {
                   <p>{dateLabel}の記録。元気度は計画の参考にだけ使います。</p>
                   <Field label="今の元気度">
                     <select
-                      autoFocus
                       name="energy"
                       defaultValue={data.checkins[day]?.energy ?? 3}
                     >
@@ -1811,7 +1817,6 @@ export default function App() {
                     hint={`残り${editor.task.remaining}分から差し引きます。`}
                   >
                     <input
-                      autoFocus
                       type="number"
                       name="progress"
                       min="0"
@@ -1860,7 +1865,6 @@ export default function App() {
                   </p>
                   <Field label="開始時刻">
                     <input
-                      autoFocus
                       type="time"
                       name="start"
                       defaultValue={clock(

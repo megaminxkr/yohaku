@@ -225,7 +225,13 @@ export async function saveData(
           tx.abort();
           return;
         }
-        store.put(next, "data");
+        try {
+          store.put(next, "data");
+        } catch (e) {
+          problem =
+            e instanceof Error ? e : new Error("保存できませんでした。");
+          tx.abort();
+        }
       };
       tx.oncomplete = () => resolve(next);
       tx.onerror = () =>

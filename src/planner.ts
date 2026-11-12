@@ -317,9 +317,12 @@ export function propose(
   const short = build(data, day, now, Math.floor(baseline / 2));
   return { ...short, normalWork: baseline };
 }
-// Optimistic per-task bound, never a promise: competing tasks and manual allocations can only reduce it.
+// Optimistic bounds, never a promise. Check both individual continuity and
+// aggregate work due by each deadline. Planned work is still outstanding work,
+// so do not subtract task allocations again when computing these bounds.
 export function deadlineWarnings(data: Data, day: Day, now: Date): string[] {
   const out: string[] = [];
+  const checked = new Set<string>();
   for (const t of data.tasks.filter((t) => t.status !== "done" && t.deadline)) {
     const days = dayDiff(t.deadline, day);
     if (days < 0) {
@@ -338,7 +341,7 @@ export function deadlineWarnings(data: Data, day: Day, now: Date): string[] {
       longest = 0;
     for (let i = 0; i <= days; i++) {
       const d = addDays(day, i);
-      const slots = freeTime(data, d, now)
+      const slots = subtract(activeWindow(data, d, now), occurrences(data, d))
         .map((s) => ({
           ...s,
           end: Math.min(s.end, (dayDiff(t.deadline, d) + 1) * 1440),
@@ -357,6 +360,21 @@ export function deadlineWarnings(data: Data, day: Day, now: Date): string[] {
       out.push(
         `「${t.title}」は、現在の固定予定と予備時間では締切までに収まりません（残り${t.remaining}分）。`,
       );
+    if (!checked.has(t.deadline)) {
+      checked.add(t.deadline);
+      const due = data.tasks.filter(
+        (x) =>
+          x.status !== "done" &&
+          x.deadline &&
+          x.deadline >= day &&
+          x.deadline <= t.deadline,
+      );
+      const work = due.reduce((sum, x) => sum + x.remaining, 0);
+      if (due.length > 1 && work > cap)
+        out.push(
+          `${t.deadline}までの${due.length}件は、合計${work}分に対して確保できる作業時間が最大${cap}分のため、すべてを締切までに終えることはできません。`,
+        );
+    }
   }
   return out;
 }

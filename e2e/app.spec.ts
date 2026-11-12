@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 async function setup(page: Page) {
-  await page.clock.install({ time: new Date("2026-11-12T09:00:00+09:00") });
+  await page.clock.setFixedTime(new Date("2026-11-12T09:00:00+09:00"));
   await page.goto("./");
   await page.getByRole("button", { name: "余白をつくりはじめる" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -199,20 +199,16 @@ test("check-in can be edited; missing and zero days differ", async ({
   await page.getByRole("button", { name: "保存する" }).click();
   await nav(page, "振り返り");
   await page.getByRole("button", { name: "選択日を実績0分として記録" }).click();
-  const row = page
-    .getByRole("row")
-    .filter({
-      has: page.getByRole("rowheader", { name: "11-12", exact: true }),
-    });
+  const row = page.getByRole("row").filter({
+    has: page.getByRole("rowheader", { name: "11-12", exact: true }),
+  });
   await expect(row).toContainText("0分");
   await expect(row).toContainText("7.5h");
   await expect(row).toContainText("3/5");
   await expect(
-    page
-      .getByRole("row")
-      .filter({
-        has: page.getByRole("rowheader", { name: "11-11", exact: true }),
-      }),
+    page.getByRole("row").filter({
+      has: page.getByRole("rowheader", { name: "11-11", exact: true }),
+    }),
   ).toContainText("未入力");
   await page.reload();
   await nav(page, "振り返り");
@@ -236,13 +232,11 @@ test("JSON download, restore preview, cancel, replace and invalid input rejectio
   expect(JSON.parse(body.toString()).tasks[0].title).toBe("バックアップ対象");
   await task(page, "復元で置き換わる", 20);
   await nav(page, "設定");
-  await page
-    .getByLabel("JSONバックアップを選択")
-    .setInputFiles({
-      name: "backup.json",
-      mimeType: "application/json",
-      buffer: body,
-    });
+  await page.getByLabel("JSONバックアップを選択").setInputFiles({
+    name: "backup.json",
+    mimeType: "application/json",
+    buffer: body,
+  });
   await expect(page.getByRole("dialog")).toContainText("1件");
   await page.getByRole("button", { name: "キャンセル", exact: true }).click();
   await nav(page, "タスク");
@@ -250,13 +244,11 @@ test("JSON download, restore preview, cancel, replace and invalid input rejectio
     page.getByRole("heading", { name: "復元で置き換わる", exact: true }),
   ).toBeVisible();
   await nav(page, "設定");
-  await page
-    .getByLabel("JSONバックアップを選択")
-    .setInputFiles({
-      name: "backup.json",
-      mimeType: "application/json",
-      buffer: body,
-    });
+  await page.getByLabel("JSONバックアップを選択").setInputFiles({
+    name: "backup.json",
+    mimeType: "application/json",
+    buffer: body,
+  });
   await page
     .getByRole("button", { name: "既存データを置き換えて復元" })
     .click();
@@ -266,13 +258,11 @@ test("JSON download, restore preview, cancel, replace and invalid input rejectio
     page.getByRole("heading", { name: "復元で置き換わる", exact: true }),
   ).toHaveCount(0);
   await nav(page, "設定");
-  await page
-    .getByLabel("JSONバックアップを選択")
-    .setInputFiles({
-      name: "bad.json",
-      mimeType: "application/json",
-      buffer: Buffer.from('{"version":999}'),
-    });
+  await page.getByLabel("JSONバックアップを選択").setInputFiles({
+    name: "bad.json",
+    mimeType: "application/json",
+    buffer: Buffer.from('{"version":999}'),
+  });
   await expect(page.getByRole("alert")).toContainText("対応していません");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
@@ -360,3 +350,65 @@ async function taskStart(page: Page) {
   await page.getByRole("button", { name: "タスクを追加", exact: true }).click();
   await page.getByLabel("タイトル", { exact: true }).fill("保存失敗テスト");
 }
+test("stale preview is refreshed before apply", async ({ page }) => {
+  await setup(page);
+  await task(page, "時刻確認", 30);
+  await nav(page, "今日");
+  await page.getByRole("button", { name: "通常プランを提案" }).click();
+  await page.clock.setFixedTime(new Date("2026-11-12T10:00:00+09:00"));
+  await page.getByRole("button", { name: "このプランを適用" }).click();
+  await expect(page.getByRole("status")).toContainText("提案を更新しました");
+  await expect(
+    page.getByText("まだプランはありません", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("プランのプレビュー")).toContainText("10:00");
+  await page.getByRole("button", { name: "このプランを適用" }).click();
+  await expect(
+    page.getByText("通常プランを適用中", { exact: true }),
+  ).toBeVisible();
+});
+test("invalid settings remain editable; category rename propagates", async ({
+  page,
+}) => {
+  await setup(page);
+  await task(page, "カテゴリ確認", 30);
+  await nav(page, "設定");
+  await page.getByLabel("活動開始", { exact: true }).fill("07:00");
+  await page.getByLabel("活動終了", { exact: true }).fill("07:00");
+  await page.getByRole("button", { name: "設定を保存" }).click();
+  await expect(page.getByRole("alert")).toContainText("異なる時刻");
+  await expect(page.getByLabel("活動終了", { exact: true })).toBeEnabled();
+  await page.getByLabel("活動終了", { exact: true }).fill("22:00");
+  await page.getByRole("button", { name: "設定を保存" }).click();
+  const row = page
+    .locator(".category-row")
+    .filter({ has: page.getByLabel("カテゴリ名 勉強", { exact: true }) });
+  await row.getByRole("textbox").fill("学び");
+  await row.getByRole("button", { name: "変更", exact: true }).click();
+  await nav(page, "タスク");
+  await expect(page.locator(".task-card")).toContainText("学び");
+});
+test("dashboard with rest and tasks has no horizontal overflow", async ({
+  page,
+}, info) => {
+  await setup(page);
+  await event(page, "学校", "09:00", "15:30", true);
+  await event(page, "夕食とひと休み", "18:30", "19:30");
+  await task(page, "数学の演習を進める", 45);
+  await task(page, "読みかけの本を読む", 25);
+  await nav(page, "今日");
+  await page.getByRole("button", { name: "通常プランを提案" }).click();
+  await page.getByRole("button", { name: "このプランを適用" }).click();
+  await expect(
+    page.getByText("通常プランを適用中", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBeTruthy();
+  await page.screenshot({
+    path: `test-results/${info.project.name}-dashboard.png`,
+    fullPage: true,
+  });
+});
