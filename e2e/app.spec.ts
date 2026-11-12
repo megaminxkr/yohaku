@@ -331,6 +331,7 @@ test("storage transaction failure reports unsaved state and supports retry", asy
   await expect(page.getByRole("dialog")).toContainText(/保存|Quota/);
   await page.getByRole("button", { name: "閉じる" }).click();
   await expect(page.getByRole("alert")).toContainText("保存できていません");
+  await expect(page.getByRole("status")).not.toContainText("保存しました");
   await expect(
     page.getByRole("button", { name: "未保存の入力をバックアップ" }),
   ).toBeVisible();

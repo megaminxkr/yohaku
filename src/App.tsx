@@ -118,6 +118,7 @@ export default function App() {
     }
     writing.current = true;
     setBusy(true);
+    setNotice("");
     setError("");
     try {
       const saved = await saveData(next, current.current.revision);
