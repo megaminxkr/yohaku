@@ -1497,3 +1497,7 @@ dialog { overflow-y: auto; overscroll-behavior: contain; }
   .form-row { grid-template-columns: minmax(0, 1fr); }
   .modal-head h2 { font-size: 17px; }
 }
+
+/* Keep native Safari time fields on separate rows, even at large text sizes. */
+.form-row.activity-hours { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.activity-hours input[type="time"] { display: block; width: 100%; min-width: 0; box-sizing: border-box; }

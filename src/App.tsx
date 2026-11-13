@@ -1250,7 +1250,7 @@ export default function App() {
                     });
                   }}
                 >
-                  <div className="form-row">
+                  <div className="form-row activity-hours">
                     <Field label="活動開始">
                       <input
                         name="start"
@@ -1547,7 +1547,7 @@ export default function App() {
             }}
           >
             <p className="muted">終了が開始より早い場合は翌日の時刻として扱います。あとで設定から変更できます。</p>
-            <div className="form-row">
+            <div className="form-row activity-hours">
               <Field label="活動開始">
                 <input type="time" name="start" defaultValue="07:00" required />
               </Field>

@@ -468,3 +468,31 @@ test("startup fits narrow and tablet screens without overlapping metric", async 
   }
   await page.screenshot({ path: "test-results/startup-tablet.png" });
 });
+
+
+test("activity time fields never overlap on onboarding or settings", async ({ page }) => {
+  await page.goto("./");
+  for (const width of [320, 390, 834, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const start = await page.getByRole("dialog").getByLabel("活動開始", { exact: true }).boundingBox();
+    const end = await page.getByRole("dialog").getByLabel("活動終了", { exact: true }).boundingBox();
+    expect(start!.y + start!.height).toBeLessThan(end!.y);
+  }
+  await page.getByRole("button", { name: "余白をつくりはじめる" }).click();
+  await nav(page, "設定");
+  for (const width of [320, 390, 834, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const start = await page.getByLabel("活動開始", { exact: true }).boundingBox();
+    const end = await page.getByLabel("活動終了", { exact: true }).boundingBox();
+    expect(start!.y + start!.height).toBeLessThan(end!.y);
+    expect(end!.x + end!.width).toBeLessThanOrEqual(width);
+  }
+  await page.getByLabel("活動開始", { exact: true }).fill("08:00");
+  await page.getByLabel("活動終了", { exact: true }).fill("22:00");
+  await page.getByRole("button", { name: "設定を保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.reload();
+  await nav(page, "設定");
+  await expect(page.getByLabel("活動開始", { exact: true })).toHaveValue("08:00");
+  await expect(page.getByLabel("活動終了", { exact: true })).toHaveValue("22:00");
+});
