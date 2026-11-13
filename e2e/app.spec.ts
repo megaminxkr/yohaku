@@ -413,3 +413,58 @@ test("dashboard with rest and tasks has no horizontal overflow", async ({
     fullPage: true,
   });
 });
+
+test("first launch explains empty state and does not focus the time picker", async ({ page }) => {
+  await page.goto("./");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "ようこそ、Yohakuへ。" })).toBeFocused();
+  await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+  await expect(page.getByLabel("サンプルのタスクと休息予定を読み込む")).not.toBeChecked();
+  await page.getByRole("button", { name: "余白をつくりはじめる" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText("現在の余白（プラン未適用）", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "まずは、取り組みたいことをひとつ。" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "通常プランを提案" })).not.toHaveClass("selected");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "今日に、余白を。" })).toBeVisible();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+});
+
+test("first launch save failure has reachable recovery inside dialog", async ({ page }) => {
+  await page.goto("./");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.evaluate(() => {
+    const original = IDBObjectStore.prototype.put;
+    (window as any).__restorePut = () => { IDBObjectStore.prototype.put = original; };
+    IDBObjectStore.prototype.put = function () { throw new DOMException("Quota exceeded", "QuotaExceededError"); };
+  });
+  await page.getByRole("button", { name: "余白をつくりはじめる" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("alert")).toContainText("保存できていません");
+  await expect(dialog.getByRole("button", { name: "未保存の入力をバックアップ" })).toBeVisible();
+  await page.evaluate(() => (window as any).__restorePut());
+  await dialog.getByRole("button", { name: "保存を再試行" }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "今日に、余白を。" })).toBeVisible();
+  await expect(dialog).toHaveCount(0);
+});
+
+test("startup fits narrow and tablet screens without overlapping metric", async ({ page }) => {
+  for (const width of [320, 390, 768, 834, 1024]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("./");
+    if (await page.getByRole("dialog").isVisible()) {
+      const dialog = page.getByRole("dialog");
+      expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+      await page.getByRole("button", { name: "余白をつくりはじめる" }).click();
+    }
+    await expect(page.getByRole("heading", { name: "今日に、余白を。" })).toBeVisible();
+    const number = await page.locator(".big-number").boundingBox();
+    const ring = await page.locator(".space-ring").boundingBox();
+    expect(number!.x + number!.width).toBeLessThanOrEqual(ring!.x + 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  }
+  await page.screenshot({ path: "test-results/startup-tablet.png" });
+});

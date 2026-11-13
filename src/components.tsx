@@ -68,18 +68,23 @@ export function Modal({
   title,
   children,
   onClose,
+  focusHeading = false,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  focusHeading?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const el = ref.current;
     const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     el?.showModal();
-    el?.querySelector<HTMLElement>("input, select, textarea")?.focus();
+    el?.querySelector<HTMLElement>(focusHeading ? "h2" : "input, select, textarea")?.focus({ preventScroll: true });
     return () => {
+      document.body.style.overflow = overflow;
       el?.close();
       if (previous?.isConnected) previous.focus();
     };
@@ -94,7 +99,7 @@ export function Modal({
       aria-labelledby="dialog-title"
     >
       <div className="modal-head">
-        <h2 id="dialog-title">{title}</h2>
+        <h2 id="dialog-title" tabIndex={-1}>{title}</h2>
         <button
           type="button"
           className="icon-button"

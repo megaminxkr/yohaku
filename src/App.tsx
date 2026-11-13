@@ -588,7 +588,7 @@ export default function App() {
               <div className="overview">
                 <section className="space-card">
                   <div>
-                    <p className="metric-label">タスク配置後の余白</p>
+                    <p className="metric-label">{plan ? "タスク配置後の余白" : "現在の余白（プラン未適用）"}</p>
                     <div className="big-number">
                       {Math.floor(after / 60)}
                       <span>時間</span>
@@ -702,7 +702,9 @@ export default function App() {
                       <h2>
                         {activeTasks.length
                           ? "今日できる量を、考えてみよう。"
-                          : "今日は、ここまででも大丈夫。"}
+                          : data.tasks.length === 0
+                            ? "まずは、取り組みたいことをひとつ。"
+                            : "今日は、ここまででも大丈夫。"}
                       </h2>
                       <p>
                         {activeTasks.length
@@ -719,7 +721,7 @@ export default function App() {
                     <SectionTitle title="今日のペース" />
                     <div className="segmented">
                       <button
-                        className={plan?.mode !== "short" ? "selected" : ""}
+                        className={plan?.mode === "normal" ? "selected" : ""}
                         onClick={() => preview("normal")}
                       >
                         通常プランを提案
@@ -1479,11 +1481,13 @@ export default function App() {
       {!data.settings.onboarded && (
         <Modal
           title="ようこそ、Yohakuへ。"
-          onClose={() =>
+          focusHeading
+          onClose={() => {
+            if (busy || pending) return;
             void mutate((d) => {
               d.settings.onboarded = true;
-            })
-          }
+            });
+          }}
         >
           <p className="intro-copy">
             予定を詰める前に、
@@ -1542,6 +1546,7 @@ export default function App() {
               });
             }}
           >
+            <p className="muted">終了が開始より早い場合は翌日の時刻として扱います。あとで設定から変更できます。</p>
             <div className="form-row">
               <Field label="活動開始">
                 <input type="time" name="start" defaultValue="07:00" required />
@@ -1558,9 +1563,13 @@ export default function App() {
               記録はこの端末・ブラウザだけに保存され、自動同期されません。設定からJSONバックアップを作れます。
             </p>
             {error && (
-              <p role="alert" className="warning">
-                {error}
-              </p>
+              <div role="alert" className="warning-box">
+                <p>{pending ? "保存できていません。" : ""}{error}</p>
+                {pending && <div className="actions">
+                  <button type="button" onClick={() => download(pending)}>未保存の入力をバックアップ</button>
+                  <button type="button" disabled={busy} onClick={() => void commit(pending)}>保存を再試行</button>
+                </div>}
+              </div>
             )}
             <button className="primary full" disabled={busy || !!pending}>
               余白をつくりはじめる <Icon name="arrow" />
